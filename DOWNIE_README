@@ -2,19 +2,51 @@ Steps Taken to complete the required task.
 
 1) The very first step was connecting to the jumphost via ssh. Once this was done I was able to cat TEST_README and retrieve my list of instructions.
 
-2) Next, I needed to make sure that I had access to the OpenShift cluster. I utilized the KUBECONFIG file to retrieve the required information. I then retrieve my API Token and logged in. Now I was able to use the `oc` command and verify I could see the nodes.
+2) Next, I needed to make sure that I had access to the OpenShift cluster. I utilized the KUBECONFIG file to retrieve the required information. I then
+retrieve my API Token and logged in. Now I was able to use the `oc` command and verify I could see the nodes.
 
 3) Now it was time to install Git and clone the repo provided. Now that I had the repo locally in the jumphost I was able to see the code.
 
-4a) With a broken playbook before me, I ran the ansible-playbook <playbook> --check command to find out if it was valid, and if not, where might the issues be. Realizing there were quotations missing around the /home/tester/perf-scale-busted/roles/cput/tasks/main.yml file on line 9 I simply changed directories to the file and corrected the problem with vim. Second I realized the `hosts` file ansible uses did not have the group `mut` in it. I created the group and placed the ip of the worker nodes retrieved from `oc get pods -owide` command. After looking at the documentation, it became clear that I needed the ansible username and password associated with these nodes to access them which I did not have and could not find. To show that the ansible-playbook as corrected and working as intended I changed the play of the playbook to localhost instead and retrieved those metrics successfully.
+4a) With a broken playbook before me, I ran the ansible-playbook <playbook> --check command to find out if it was valid, and if not, where might the
+issues be. Realizing there were quotations missing around the /home/tester/perf-scale-busted/roles/cput/tasks/main.yml file on line 9 I simply changed
+directories to the file and corrected the problem with vim. Second I realized the `hosts` file ansible uses did not have the group `mut` in it. I created
+the group and placed the ip of the worker nodes retrieved from `oc get pods -owide` command. After looking at the documentation, it became clear that I
+needed the ansible username and password associated with these nodes to access them which I did not have and could not find. To show that the ansible-playbook
+as corrected and working as intended I changed the play of the playbook to localhost instead and retrieved those metrics successfully.
 
-4bc) Since the playbook was fixed, I now started the process of pushing up the fixed files back to the git repo. I performed a `git status` to view the current tracked files. `git add --all` to add the changed files I wanted to push to the tracked files. Next, a `git commit -am` with a message to solidify the commit. Finally, a `git push` to push back up to the repo. I ran into some troubles here as it wanted a git username and password. I failed to find this information and tried creating my own branch and setting the git global configurations to my own credentials. This too would not allow me to push back up to the repo. I finally decided to clone the repo on my local machine and fix the files here again and attempt to push. I ran into permission issues pushing into the repo here as well. Short of a simple authentication and profile set up, I showed in my presentation where I would start the Pull Request process for the changed files if I had been able to push the files.
+4bc) Since the playbook was fixed, I now started the process of pushing up the fixed files back to the git repo. I performed a `git status` to view the
+current tracked files. `git add --all` to add the changed files I wanted to push to the tracked files. Next, a `git commit -am` with a message to solidify
+the commit. Finally, a `git push` to push back up to the repo. I ran into some troubles here as it wanted a git username and password. I failed to find this
+information and tried creating my own branch and setting the git global configurations to my own credentials. This too would not allow me to push back up to the
+repo. I finally decided to clone the repo on my local machine and fix the files here again and attempt to push. I ran into permission issues pushing into the
+repo here as well. Short of a simple authentication and profile set up, I showed in my presentation where I would start the Pull Request process for the changed
+files if I had been able to push the files.
 
-5) It was time to make the master nodes of the OpenShift cluster schedulable. This was done by removing the taint's on the nodes using the command `sudo oc adm taint nodes <node name> node-role.kubernetes.io/master:NoSchedule-` on all the master nodes. I also described each node to verify that the value for Unschedulable was set to false on each node. Even though I was successful later I will admit that once I receiver a confirmation as shown in my presentation that the node was untainted, describing the node again still resulted in seeing the taint. I am unsure if there is a controller somewhere that is setting this at the cluster level possibly, but it was worth noting.
+5) It was time to make the master nodes of the OpenShift cluster schedulable. This was done by removing the taint's on the nodes using the command `sudo oc adm
+taint nodes <node name> node-role.kubernetes.io/master:NoSchedule-` on all the master nodes. I also described each node to verify that the value for Unschedulable
+was set to false on each node. Even though I was successful later I will admit that once I receiver a confirmation as shown in my presentation that the node was
+untainted, describing the node again still resulted in seeing the taint. I am unsure if there is a controller somewhere that is setting this at the cluster level
+possibly, but it was worth noting.
 
-6) Redis was my next challenge. I started by googling what Redis was as I was completely green and have never heard of it before. Now that I had an understanding of what it was I looked for a simple example of a YAML file to deploy it. After combing the internet and trying a few I finally was able to deploy a Redis image. I then changed the image to the request Redis image from the TEST_README file and deployed it again and verified it was running.
+6) Redis was my next challenge. I started by googling what Redis was as I was completely green and have never heard of it before. Now that I had an understanding
+of what it was I looked for a simple example of a YAML file to deploy it. After combing the internet and trying a few I finally was able to deploy a Redis image.
+I then changed the image to the request Redis image from the TEST_README file and deployed it again and verified it was running.
 
-7) Next, was the challenge of building an application from the ground up the would retrieve the node name from each pod that would need to run on every node. Realizing that a Daemonset would fit the mold here and the fact I had already set the Master nodes to schedulable I set off to work using GoLang. I created a new directory and ran a go mod init setting it to my personal repo that I could push code up to. I then began crafting a simple application that would retrieve the node name from an Env variable and log it out so I may confirm it was working correctly. Additionally, I created a Redis client and after looking at the documentation, performed a simple `ping` to the Redis instance running in the cluster and logged the output to verify the connection. I created a simple Dockerfile to build my binary image, a Makefile to simply create the image and push it to my repository, and a basic YAML file to deploy the daemonset in the cluster. Once the image was built and pushed I deployed the first version of my application into the cluster with success. I was able to see in the logs that I was able to retrieve the correct parent node name from each pod, and also ping the Redis instance and received a pong back. Now I updated the application to not just ping the Redis instance, but now to write to the instance with the NodeName:<node name> for each pod. I now built and deployed my second version of the application and checked for successful completion. This is also where I ran into some issues. My code did work and did not receive an error back from Redis, however, I ran into two issues with successfully showing my achievement. One, I was unable to resolve a CrashLoopBackOff state that the daemonset would enter on every pod it ran on. I scoured the internet looking for answers as I set a restartPolicy, and removed and added things to my YAML file with no luck. My logs would show a successful completion of the code, but by describing the pod and looking at events, the pod would want to restart after completion. Second, I was unable to find my data being written to Redis. I exec'd into the pod and looked through the standard files as well as got into the redis-cli. With no errors being written back from my program, little time, and being new to Redis I simply was unable to find where exactly they were being stored.
+7) Next, was the challenge of building an application from the ground up the would retrieve the node name from each pod that would need to run on every node.
+Realizing that a Daemonset would fit the mold here and the fact I had already set the Master nodes to schedulable I set off to work using GoLang. I created a
+new directory and ran a go mod init setting it to my personal repo that I could push code up to. I then began crafting a simple application that would retrieve
+the node name from an Env variable and log it out so I may confirm it was working correctly. Additionally, I created a Redis client and after looking at the
+documentation, performed a simple `ping` to the Redis instance running in the cluster and logged the output to verify the connection. I created a simple Dockerfile
+to build my binary image, a Makefile to simply create the image and push it to my repository, and a basic YAML file to deploy the daemonset in the cluster.
+Once the image was built and pushed I deployed the first version of my application into the cluster with success. I was able to see in the logs that I was able
+to retrieve the correct parent node name from each pod, and also ping the Redis instance and received a pong back. Now I updated the application to not just
+ping the Redis instance, but now to write to the instance with the NodeName:<node name> for each pod. I now built and deployed my second version of the application
+and checked for successful completion. This is also where I ran into some issues. My code did work and did not receive an error back from Redis, however, I ran into
+two issues with successfully showing my achievement. One, I was unable to resolve a CrashLoopBackOff state that the daemonset would enter on every pod it ran on.
+I scoured the internet looking for answers as I set a restartPolicy, and removed and added things to my YAML file with no luck. My logs would show a successful
+completion of the code, but by describing the pod and looking at events, the pod would want to restart after completion. Second, I was unable to find my data
+being written to Redis. I exec'd into the pod and looked through the standard files as well as got into the redis-cli. With no errors being written back from my
+program, little time, and being new to Redis I simply was unable to find where exactly they were being stored.
 
 8) I now created the README file you are currently reading to document my steps.
 
@@ -23,4 +55,6 @@ Steps Taken to complete the required task.
 10) I will finally email Dustin with my PowerPoint presentation that shows the journey I have had over the last two days as well as a link to my github repo.
 
 
-I really appreciate the opportunity that you and your team are giving me to even apply for this position and be considered. I hope I demonstrated my abilities in a clear way that shows I do have a good understanding of this space and I am eager and passionate to sharpen my skillsets as I move forward with my career. Thank you again.
+I really appreciate the opportunity that you and your team are giving me to even apply for this position and be considered. I hope I demonstrated my abilities
+in a clear way that shows I do have a good understanding of this space and I am eager and passionate to sharpen my skillsets as I move forward with my career.
+Thank you again.
