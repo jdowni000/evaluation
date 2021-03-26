@@ -2,7 +2,7 @@
 
 Repository for Justin Downie's Technical Evaluation.
 
-Evaluation folder contains all files created for the created daemonset applicaiton
+Evaluation folder contains all files created for the created daemonset applicaiton.
 
 Repo folder contains the changed files of the RedHat cloned repo. 
 
