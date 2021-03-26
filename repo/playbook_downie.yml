@@ -1,0 +1,16 @@
+---
+
+- name: Get CPU count and memory size from machine under test (mut)
+  hosts: mut
+  vars:
+    command: lscpu | grep CPU
+  roles:
+    - cpu
+    - memory
+  post_tasks:
+    - name: Print CPU Count
+      debug:
+        msg: "{{ cpu_count }}"
+    - name: Print Memory Size
+      debug:
+        msg: "{{ memory_size }}"

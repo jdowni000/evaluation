@@ -1,0 +1,8 @@
+- name: Collect cpu information
+  shell: |
+    {{ command }}
+  register: cpu_info
+
+- name: Set cpu count fact
+  set_fact:
+    cpu_count: "{{ cpu_info }}" 
